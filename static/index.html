@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#141518">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PolyView">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/static/icons/icon-192.png">
+<title>PolyView</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #0e0f11;
+  --sidebar: #141518;
+  --sidebar-border: #1e2025;
+  --panel: #121316;
+  --surface: #1a1c21;
+  --surface2: #22242b;
+  --accent: #00e5a0;
+  --text: #e8eaf0;
+  --text-dim: #6b7280;
+  --text-muted: #3d424f;
+  --hover: rgba(0,229,160,0.06);
+  --selected: rgba(0,229,160,0.12);
+  --sidebar-w: 280px;
+  --header-h: 52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'JetBrains Mono',monospace;
+  background:var(--bg); color:var(--text);
+  display:flex; flex-direction:column;
+  /* safe area: tidak dipasang di body, tapi di elemen tepi (header, tree, tombol)
+     agar latar panel membentang sampai tepi layar di iOS standalone */
+}
+
+/* ══ HEADER ══════════════════════════════════════════════ */
+header{
+  /* ikut membentang di balik status bar (black-translucent) */
+  height:calc(var(--header-h) + env(safe-area-inset-top)); flex-shrink:0;
+  background:var(--sidebar);
+  border-bottom:1px solid var(--sidebar-border);
+  display:flex; align-items:center;
+  padding:env(safe-area-inset-top) max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+  gap:10px;
+  position:relative; z-index:100;
+}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo-icon{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  overflow:hidden;
+}
+.logo-name{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px;}
+.logo-name span{color:var(--accent);}
+
+.header-right{margin-left:auto;display:flex;align-items:center;gap:6px;}
+
+/* hamburger — only visible on mobile */
+#menu-btn{
+  display:none;
+  background:var(--surface);
+  border:1px solid var(--sidebar-border);
+  border-radius:6px; width:36px;height:30px;
+  align-items:center;justify-content:center;
+  cursor:pointer; flex-shrink:0; transition:border-color .2s;
+}
+#menu-btn:hover{border-color:var(--accent);}
+#menu-btn svg{width:16px;height:16px;stroke:var(--text-dim);stroke-width:2;}
+
+.lang-btn{
+  background:var(--surface);border:1px solid var(--sidebar-border);
+  border-radius:6px;width:36px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:17px;line-height:1;
+  transition:border-color .2s;user-select:none;
+}
+.lang-btn:hover{border-color:var(--accent);}
+
+/* ══ MAIN ════════════════════════════════════════════════ */
+.main{display:flex;flex:1;overflow:hidden;position:relative;}
+
+/* ══ SIDEBAR OVERLAY (mobile) ════════════════════════════ */
+#sidebar-overlay{
+  display:none;
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:90;
+  backdrop-filter:blur(2px);
+}
+#sidebar-overlay.open{display:block;}
+
+/* ══ SIDEBAR ═════════════════════════════════════════════ */
+.sidebar{
+  width:var(--sidebar-w); flex-shrink:0;
+  background:var(--sidebar);
+  border-right:1px solid var(--sidebar-border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .25s ease;
+  z-index:91;
+  padding-left:env(safe-area-inset-left); /* landscape: notch di kiri */
+}
+
+.sidebar-header{
+  padding:14px 14px 10px;
+  border-bottom:1px solid var(--sidebar-border);
+  flex-shrink:0;
+}
+.sidebar-title{
+  font-family:'Syne',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;color:var(--accent);text-transform:uppercase;
+  margin-bottom:10px;
+}
+
+/* Search */
+.search-wrap{position:relative;}
+.search-wrap .ico-search{
+  position:absolute;left:9px;top:50%;transform:translateY(-50%);
+  width:13px;height:13px;color:var(--text-muted);pointer-events:none;
+}
+#search{
+  width:100%;background:var(--surface);
+  border:1px solid var(--sidebar-border);border-radius:6px;
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:7px 28px 7px 28px;outline:none;transition:border-color .2s;
+}
+#search:focus{border-color:var(--accent);}
+#search::placeholder{color:var(--text-muted);}
+#search-clear{
+  position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;background:var(--text-muted);
+  border:none;border-radius:50%;cursor:pointer;
+  display:none;align-items:center;justify-content:center;
+  padding:0;transition:background .15s;
+}
+#search-clear:hover{background:var(--text-dim);}
+#search-clear svg{width:8px;height:8px;stroke:var(--bg);stroke-width:2.5;}
+#search-clear.visible{display:flex;}
+
+/* Tree */
+.tree-wrap{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0 calc(6px + env(safe-area-inset-bottom));}
+.tree-wrap::-webkit-scrollbar{width:4px;}
+.tree-wrap::-webkit-scrollbar-thumb{background:#1e2025;border-radius:2px;}
+
+.tree-node{user-select:none;}
+.tree-row{
+  display:flex;align-items:center;gap:4px;
+  padding:5px 8px;cursor:pointer;
+  border-radius:5px;margin:1px 5px;
+  font-size:12.5px;transition:background .12s;
+  white-space:nowrap;overflow:hidden;
+  /* bigger tap target on mobile */
+  min-height:34px;
+}
+.tree-row:hover{background:var(--hover);}
+.tree-row.active{background:var(--selected);}
+.tree-row.active .row-name{color:var(--accent);}
+
+.toggle-btn{
+  width:16px;height:16px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);transition:transform .2s;
+}
+.toggle-btn.open{transform:rotate(90deg);}
+.toggle-btn svg{width:10px;height:10px;}
+.toggle-spacer{width:16px;flex-shrink:0;}
+.row-icon{flex-shrink:0;width:15px;height:15px;}
+.row-icon svg{width:15px;height:15px;}
+.row-name{flex:1;overflow:hidden;text-overflow:ellipsis;font-size:12px;}
+
+.row-badge{
+  font-size:8px;font-weight:700;padding:1px 4px;
+  border-radius:3px;letter-spacing:.4px;flex-shrink:0;color:var(--bg);
+}
+.badge-fbx{background:var(--accent);}
+.badge-obj{background:#4fc3f7;}
+.badge-tif,.badge-tiff{background:#e05cb0;}
+.badge-png{background:#ab47bc;}
+.badge-jpg,.badge-jpeg{background:#ef5350;}
+.badge-zip{background:#ff9800;}
+.badge-max{background:#78909c;}
+.badge-other{background:var(--text-muted);color:var(--text);}
+
+.tree-children{display:none;}
+.tree-children.open{display:block;}
+.tree-status{padding:20px 14px;color:var(--text-muted);font-size:12px;text-align:center;}
+
+/* ══ RESIZE HANDLE (desktop only) ══════════════════════════ */
+.resize-handle{
+  width:4px;background:transparent;
+  cursor:col-resize;flex-shrink:0;transition:background .2s;
+}
+.resize-handle:hover,.resize-handle.dragging{background:var(--accent);}
+
+/* ══ PREVIEW ═════════════════════════════════════════════ */
+.preview{
+  flex:1;background:var(--panel);
+  display:flex;flex-direction:column;overflow:hidden;position:relative;
+}
+.preview-toolbar{
+  height:40px;flex-shrink:0;
+  background:var(--sidebar);border-bottom:1px solid var(--sidebar-border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+}
+.toolbar-path{
+  font-size:10px;color:var(--text-dim);
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.toolbar-path span{color:var(--accent);}
+.toolbar-controls{display:flex;gap:5px;}
+.ctrl-btn{
+  background:var(--surface);border:1px solid var(--sidebar-border);
+  color:var(--text-dim);font-size:10px;
+  font-family:'JetBrains Mono',monospace;
+  padding:3px 7px;border-radius:4px;cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;gap:3px;
+}
+.ctrl-btn:hover{border-color:var(--accent);color:var(--accent);}
+.ctrl-btn.active{border-color:var(--accent);color:var(--accent);}
+.ctrl-btn svg{width:11px;height:11px;}
+
+/* States */
+.preview-empty{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;color:var(--text-muted);
+}
+.preview-empty svg{width:56px;height:56px;opacity:.3;}
+.preview-empty p{font-size:12px;}
+
+#three-container{flex:1;position:relative;display:none;flex-direction:column;}
+#three-container canvas{display:block;width:100%!important;height:100%!important;touch-action:none;}
+
+.three-overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;
+  background:var(--panel);color:var(--text-dim);font-size:12px;pointer-events:none;
+}
+.spinner{
+  width:30px;height:30px;
+  border:2px solid var(--surface2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.three-hint{
+  position:absolute;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+  font-size:9.5px;color:var(--text-muted);
+  background:rgba(0,0,0,.5);padding:3px 9px;border-radius:4px;
+  pointer-events:none;white-space:nowrap;
+}
+.webgl-error{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  background:#1a0a0a;border:1px solid #c0392b;color:#e74c3c;
+  font-size:11px;padding:8px 14px;border-radius:6px;
+  max-width:90%;text-align:center;line-height:1.6;z-index:10;
+}
+
+#img-container{
+  flex:1;display:none;align-items:center;justify-content:center;
+  overflow:hidden;background:var(--panel);padding:16px;
+}
+#img-container img{
+  max-width:100%;max-height:100%;object-fit:contain;
+  border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5);
+}
+
+#unsupported{
+  flex:1;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  color:var(--text-muted);font-size:12px;
+}
+#unsupported svg{width:44px;height:44px;opacity:.2;}
+
+/* ══ DOWNLOAD BUTTON ═════════════════════════════════════ */
+.dl-wrap{
+  position:absolute;z-index:20;
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  right:calc(16px + env(safe-area-inset-right));
+}
+#dl-btn{
+  background:var(--accent);color:var(--bg);
+  border:none;border-radius:8px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
+  padding:10px 20px;cursor:pointer;
+  display:flex;align-items:center;gap:7px;
+  transition:all .2s;box-shadow:0 4px 18px rgba(0,229,160,.3);
+}
+#dl-btn:hover{background:#fff;transform:translateY(-1px);}
+#dl-btn:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none;}
+#dl-btn svg{width:14px;height:14px;}
+
+/* ══ MOBILE RESPONSIVE ════════════════════════════════════ */
+@media (max-width: 640px) {
+  :root { --sidebar-w: 76vw; }
+
+  #menu-btn { display:flex; }
+
+  /* sidebar slides in from left as drawer */
+  .sidebar {
+    position:absolute; top:0; left:0;
+    height:100%; z-index:91;
+    transform:translateX(-100%);
+    box-shadow:4px 0 24px rgba(0,0,0,.5);
+  }
+  .sidebar.open { transform:translateX(0); }
+
+  /* hide desktop resize handle */
+  .resize-handle { display:none; }
+
+  .logo-name { font-size:16px; }
+
+  .preview-toolbar { height:38px; }
+  .toolbar-path { font-size:9.5px; }
+
+  .three-hint { font-size:9px; bottom:calc(8px + env(safe-area-inset-bottom)); }
+
+  #dl-btn { font-size:12px; padding:9px 16px; }
+
+  .tree-row { font-size:13px; min-height:38px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <!-- hamburger - mobile -->
+  <button id="menu-btn" aria-label="Buka direktori">
+    <svg viewBox="0 0 24 24" fill="none"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="/static/icons/icon-192.png" alt="PolyView" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">
+    </div>
+    <span class="logo-name">Poly<span>View</span></span>
+  </div>
+  <div class="header-right">
+    <button class="lang-btn" id="lang-btn" title="Toggle language">🇮🇩</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- overlay backdrop (mobile) -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title" id="label-dir">Direktori</div>
+      <div class="search-wrap">
+        <svg class="ico-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="search" placeholder="Cari file...">
+        <button id="search-clear">
+          <svg viewBox="0 0 10 10" fill="none"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="tree-wrap" id="tree-wrap">
+      <div class="tree-status">Memuat direktori...</div>
+    </div>
+  </div>
+
+  <!-- resize handle (desktop) -->
+  <div class="resize-handle" id="resize-handle"></div>
+
+  <!-- PREVIEW -->
+  <div class="preview" id="preview">
+    <div class="preview-toolbar">
+      <div class="toolbar-path" id="toolbar-path"><span>polyview</span> / Documents</div>
+      <div class="toolbar-controls" id="toolbar-controls" style="display:none">
+        <button class="ctrl-btn" id="btn-reset">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+          </svg>
+          <span data-i="reset">Reset</span>
+        </button>
+        <button class="ctrl-btn" id="btn-wire">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+          </svg>
+          Wire
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-empty" id="state-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      <p id="empty-msg">Pilih file untuk preview</p>
+    </div>
+
+    <div id="three-container">
+      <div class="three-overlay" id="three-loading">
+        <div class="spinner"></div>
+        <span id="loading-text">Memuat model 3D...</span>
+      </div>
+      <div class="three-hint" id="three-hint" style="display:none"></div>
+    </div>
+
+    <div id="img-container">
+      <img id="preview-img" src="" alt="">
+    </div>
+
+    <div id="unsupported">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <p id="unsupported-msg"></p>
+    </div>
+
+    <div class="dl-wrap">
+      <button id="dl-btn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span id="dl-text">Download</span>
+      </button>
+    </div>
+  </div><!-- /preview -->
+</div><!-- /main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   I18N
+════════════════════════════════════════════════════════════ */
+const LANG = {
+  id:{flag:'🇮🇩',dir:'Direktori',search:'Cari file...',
+      empty:'Pilih file untuk preview',folder_sel:'Folder dipilih — klik Download untuk ZIP',
+      loading:'Memuat direktori...',no_result:'Tidak ada hasil',
+      hint_desktop:'Drag: Putar  |  Scroll: Zoom  |  Kanan: Geser',
+      hint_mobile:'1 jari: Putar  |  Cubit: Zoom  |  2 jari geser: Pan',
+      download:'Download',reset:'Reset',unsup:'Format tidak didukung',
+      webgl_err:'WebGL tidak tersedia. Buka <b>about:config</b> → <code>webgl.force-enabled = true</code>, atau aktifkan 3D Acceleration di VMware.',
+      load_model:'Memuat model',load_pct:'Memuat'},
+  en:{flag:'🇺🇸',dir:'Directory',search:'Search files...',
+      empty:'Select a file to preview',folder_sel:'Folder selected — click Download for ZIP',
+      loading:'Loading directory...',no_result:'No results found',
+      hint_desktop:'Drag: Rotate  |  Scroll: Zoom  |  Right: Pan',
+      hint_mobile:'1 finger: Rotate  |  Pinch: Zoom  |  2 finger drag: Pan',
+      download:'Download',reset:'Reset',unsup:'Format not supported',
+      webgl_err:'WebGL unavailable. Open <b>about:config</b> → <code>webgl.force-enabled = true</code>, or enable 3D Acceleration in VMware.',
+      load_model:'Loading model',load_pct:'Loading'}
+};
+let lang='id';
+const isMobile=()=>window.innerWidth<=640;
+const t=k=>LANG[lang][k]||k;
+
+function applyLang(){
+  document.getElementById('label-dir').textContent=t('dir');
+  document.getElementById('search').placeholder=t('search');
+  document.getElementById('lang-btn').textContent=lang==='id'?LANG.en.flag:LANG.id.flag;
+  document.getElementById('empty-msg').textContent=t('empty');
+  document.getElementById('dl-text').textContent=t('download');
+  const hint=document.getElementById('three-hint');
+  if(hint) hint.textContent=isMobile()?t('hint_mobile'):t('hint_desktop');
+}
+document.getElementById('lang-btn').addEventListener('click',()=>{
+  lang=lang==='id'?'en':'id'; applyLang();
+});
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE SIDEBAR DRAWER
+════════════════════════════════════════════════════════════ */
+const sidebar  = document.getElementById('sidebar');
+const overlay  = document.getElementById('sidebar-overlay');
+const menuBtn  = document.getElementById('menu-btn');
+
+function openSidebar(){
+  sidebar.classList.add('open');
+  overlay.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeSidebar(){
+  sidebar.classList.remove('open');
+  overlay.classList.remove('open');
+  document.body.style.overflow='';
+}
+menuBtn.addEventListener('click', openSidebar);
+overlay.addEventListener('click', closeSidebar);
+
+/* ════════════════════════════════════════════════════════════
+   SEARCH + CLEAR
+════════════════════════════════════════════════════════════ */
+const searchInput = document.getElementById('search');
+const clearBtn    = document.getElementById('search-clear');
+
+searchInput.addEventListener('input',()=>{
+  clearBtn.classList.toggle('visible', searchInput.value.length>0);
+  renderTree(treeData, searchInput.value.trim());
+});
+clearBtn.addEventListener('click',()=>{
+  searchInput.value=''; clearBtn.classList.remove('visible');
+  searchInput.focus(); renderTree(treeData,'');
+});
+
+/* ════════════════════════════════════════════════════════════
+   ICONS
+════════════════════════════════════════════════════════════ */
+const ICO_FOLDER_C=`<svg viewBox="0 0 24 24" fill="#f0a500"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+const ICO_FOLDER_O=`<svg viewBox="0 0 24 24" fill="#ffc107"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+const ICO_3D=`<svg viewBox="0 0 24 24" fill="none" stroke="#00e5a0" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+const ICO_IMG=`<svg viewBox="0 0 24 24" fill="none" stroke="#e05cb0" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+const ICO_FILE=`<svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+const ICO_CHV=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+function extBadge(ext){
+  const e=(ext||'').toLowerCase();
+  const map={fbx:'badge-fbx',obj:'badge-obj',tif:'badge-tif',tiff:'badge-tif',
+             png:'badge-png',jpg:'badge-jpg',jpeg:'badge-jpg',zip:'badge-zip',max:'badge-max'};
+  return e?`<span class="row-badge ${map[e]||'badge-other'}">${e.toUpperCase()}</span>`:'';
+}
+function fileIcon(ext){
+  const e=(ext||'').toLowerCase();
+  if(['fbx','obj'].includes(e)) return ICO_3D;
+  if(['tif','tiff','png','jpg','jpeg'].includes(e)) return ICO_IMG;
+  return ICO_FILE;
+}
+
+/* ════════════════════════════════════════════════════════════
+   TREE
+════════════════════════════════════════════════════════════ */
+let treeData=[], currentPath=null, currentType=null;
+const treeWrap    = document.getElementById('tree-wrap');
+const toolbarPath = document.getElementById('toolbar-path');
+const toolbarCtrl = document.getElementById('toolbar-controls');
+const dlBtn       = document.getElementById('dl-btn');
+
+function buildNode(node, depth){
+  const div=document.createElement('div');
+  div.className='tree-node';
+  const row=document.createElement('div');
+  row.className='tree-row';
+  row.innerHTML=`
+    <span style="width:${depth*13}px;flex-shrink:0"></span>
+    ${node.type==='folder'
+      ?`<span class="toggle-btn">${ICO_CHV}</span>`
+      :`<span class="toggle-spacer"></span>`}
+    <span class="row-icon">${node.type==='folder'?ICO_FOLDER_C:fileIcon(node.ext||'')}</span>
+    <span class="row-name">${node.name}</span>
+    ${node.type==='file'?extBadge(node.ext||''):''}
+  `;
+  div.appendChild(row);
+
+  if(node.type==='folder'&&node.children){
+    const ch=document.createElement('div');
+    ch.className='tree-children';
+    node.children.forEach(c=>ch.appendChild(buildNode(c,depth+1)));
+    div.appendChild(ch);
+    const tb=row.querySelector('.toggle-btn');
+    const ico=row.querySelector('.row-icon');
+    tb.addEventListener('click',e=>{
+      e.stopPropagation();
+      const open=ch.classList.toggle('open');
+      tb.classList.toggle('open',open);
+      ico.innerHTML=open?ICO_FOLDER_O:ICO_FOLDER_C;
+    });
+  }
+  row.addEventListener('click',()=>{
+    onSelect(node,row);
+    // auto-close sidebar on mobile after selecting file
+    if(isMobile()&&node.type==='file') closeSidebar();
+  });
+  return div;
+}
+
+function filterTree(nodes,q){
+  const r=[];
+  nodes.forEach(n=>{
+    if(n.name.toLowerCase().includes(q)){r.push(n);return;}
+    if(n.type==='folder'&&n.children){
+      const fc=filterTree(n.children,q);
+      if(fc.length) r.push({...n,children:fc});
+    }
+  });
+  return r;
+}
+
+function renderTree(data,q=''){
+  treeWrap.innerHTML='';
+  const list=q?filterTree(data,q.toLowerCase()):data;
+  if(!list.length){treeWrap.innerHTML=`<div class="tree-status">${t('no_result')}</div>`;return;}
+  list.forEach(n=>treeWrap.appendChild(buildNode(n,0)));
+}
+
+async function loadTree(){
+  treeWrap.innerHTML=`<div class="tree-status">${t('loading')}</div>`;
+  try{
+    const res=await fetch('/api/tree');
+    treeData=await res.json();
+    renderTree(treeData);
+  }catch(e){
+    treeWrap.innerHTML=`<div class="tree-status">Gagal memuat direktori</div>`;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SELECT
+════════════════════════════════════════════════════════════ */
+function onSelect(node,rowEl){
+  document.querySelectorAll('.tree-row.active').forEach(r=>r.classList.remove('active'));
+  rowEl.classList.add('active');
+  currentPath=node.path; currentType=node.type;
+  dlBtn.disabled=false;
+  toolbarPath.innerHTML=`<span>polyview</span> / ${node.path.replace(/\//g,' / ')}`;
+  if(node.type==='folder'){
+    setState('empty',t('folder_sel'));
+    toolbarCtrl.style.display='none'; return;
+  }
+  const ext=(node.ext||'').toLowerCase();
+  if(['fbx','obj'].includes(ext)){
+    load3D(`/api/file/${node.path}`,ext);
+    toolbarCtrl.style.display='flex';
+  } else if(['png','jpg','jpeg','tif','tiff'].includes(ext)){
+    loadImage(`/api/file/${node.path}`);
+    toolbarCtrl.style.display='none';
+  } else {
+    setState('unsupported',`${t('unsup')} (.${ext})`);
+    toolbarCtrl.style.display='none';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════ */
+function setState(which,msg){
+  document.getElementById('state-empty').style.display    = which==='empty'       ?'flex':'none';
+  document.getElementById('three-container').style.display= which==='3d'          ?'flex':'none';
+  document.getElementById('img-container').style.display  = which==='image'       ?'flex':'none';
+  document.getElementById('unsupported').style.display    = which==='unsupported' ?'flex':'none';
+  if(which==='empty'&&msg)       document.getElementById('empty-msg').textContent=msg;
+  if(which==='unsupported'&&msg) document.getElementById('unsupported-msg').textContent=msg;
+  if(which!=='3d') disposeThree();
+}
+
+/* ════════════════════════════════════════════════════════════
+   IMAGE
+════════════════════════════════════════════════════════════ */
+function loadImage(url){
+  setState('image');
+  document.getElementById('preview-img').src=url;
+}
+
+/* ════════════════════════════════════════════════════════════
+   THREE.JS
+════════════════════════════════════════════════════════════ */
+let renderer,scene,camera,animId;
+let _controls=null;  // orbit state object
+
+function checkWebGL(){
+  try{
+    const c=document.createElement('canvas');
+    return !!(window.WebGLRenderingContext&&
+      (c.getContext('webgl')||c.getContext('experimental-webgl')));
+  }catch(e){return false;}
+}
+
+function disposeThree(){
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  if(renderer){renderer.dispose();renderer=null;}
+  const c=document.getElementById('three-container');
+  c.querySelectorAll('canvas').forEach(el=>el.remove());
+  c.querySelectorAll('.webgl-error').forEach(el=>el.remove());
+  scene=null;camera=null;_controls=null;
+}
+
+function initThree(){
+  disposeThree();
+  const container=document.getElementById('three-container');
+  if(!checkWebGL()){
+    const err=document.createElement('div');
+    err.className='webgl-error';err.innerHTML=t('webgl_err');
+    container.appendChild(err);
+    document.getElementById('three-loading').style.display='none';
+    return false;
+  }
+  try{
+    renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,failIfMajorPerformanceCaveat:false});
+  }catch(e){
+    try{renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,failIfMajorPerformanceCaveat:false});}
+    catch(e2){
+      const err=document.createElement('div');
+      err.className='webgl-error';err.innerHTML=t('webgl_err');
+      container.appendChild(err);
+      document.getElementById('three-loading').style.display='none';
+      return false;
+    }
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.shadowMap.enabled=false;
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  container.appendChild(renderer.domElement);
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x1a1c21);
+  scene.add(new THREE.AmbientLight(0xffffff,0.8));
+  const dir=new THREE.DirectionalLight(0xffffff,1.0);
+  dir.position.set(5,8,5); scene.add(dir);
+  const fill=new THREE.DirectionalLight(0x88bbff,0.3);
+  fill.position.set(-5,-3,-5); scene.add(fill);
+  const grid = new THREE.GridHelper(30, 30, 0x2a2d35, 0x1e2025);
+grid.rotation.x = Math.PI / 2;   // ← putar grid ke bidang XY (Z-up)
+scene.add(grid);
+
+  camera=new THREE.PerspectiveCamera(45,1,0.001,100000);
+  camera.position.set(0,3,8);
+
+  setupOrbitControls(renderer.domElement);
+  resizeThree();
+
+  (function animate(){
+    animId=requestAnimationFrame(animate);
+    renderer.render(scene,camera);
+  })();
+  return true;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ORBIT CONTROLS  — mouse + touch, fixed vertical direction
+   
+   Spherical coords:
+     phi   = polar angle from Y-axis (0=top, π=bottom)
+     theta = azimuth angle around Y-axis
+
+   Fix vertikal: drag NAIK → kamera naik → phi BERKURANG (negatif dy)
+════════════════════════════════════════════════════════════ */
+function setupOrbitControls(el){
+  let sph={theta:0.6, phi:1.1, radius:8};
+  let tgt=new THREE.Vector3(0,0,0);
+
+  function updateCam(){
+  camera.position.set(
+    tgt.x + sph.radius * Math.sin(sph.phi) * Math.sin(sph.theta),
+    tgt.y + sph.radius * Math.sin(sph.phi) * Math.cos(sph.theta),  // Y jadi horizontal
+    tgt.z + sph.radius * Math.cos(sph.phi)                          // Z sekarang UP
+  );
+  camera.up.set(0, 0, 1);   // ← tambahkan baris ini
+  camera.lookAt(tgt);
+}
+  updateCam();
+
+  /* ── expose API ── */
+  _controls={
+    setSph:(r,th,ph)=>{sph.radius=r;sph.theta=th;sph.phi=ph;},
+    setTgt:(v)=>{tgt.copy(v);},
+    update: updateCam,
+    getSph:()=>({...sph}),
+    getTgt:()=>tgt.clone(),
+    _init:null
+  };
+
+  /* ── helpers ── */
+  function rotate(dx,dy){
+    // Z-up: drag kanan → theta bertambah (berlawanan dengan Y-up)
+    sph.theta += dx * 0.005;
+    sph.phi = Math.max(0.05, Math.min(Math.PI-0.05, sph.phi - dy*0.005));
+    updateCam();
+  }
+  function pan(dx,dy){
+    const right=new THREE.Vector3(),up=new THREE.Vector3();
+    camera.matrix.extractBasis(right,up,new THREE.Vector3());
+    const s=sph.radius*0.001;
+    tgt.addScaledVector(right,-dx*s);
+    tgt.addScaledVector(up, dy*s);
+    updateCam();
+  }
+  function zoom(delta){
+    sph.radius=Math.max(0.01, sph.radius*(1+delta*0.001));
+    updateCam();
+  }
+
+  /* ── MOUSE ── */
+  let mDown=false,mRight=false,mLast={x:0,y:0};
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('mousedown',e=>{
+    mDown=true; mRight=e.button===2;
+    mLast={x:e.clientX,y:e.clientY};
+  });
+  window.addEventListener('mouseup',()=>{mDown=false;});
+  window.addEventListener('mousemove',e=>{
+    if(!mDown)return;
+    const dx=e.clientX-mLast.x, dy=e.clientY-mLast.y;
+    mLast={x:e.clientX,y:e.clientY};
+    if(!mRight) rotate(dx,dy); else pan(dx,dy);
+  });
+  el.addEventListener('wheel',e=>{
+    e.preventDefault(); zoom(e.deltaY);
+  },{passive:false});
+
+  /* ── TOUCH ── */
+  let touches={}, tLast={};
+  function touchPos(e){
+    const t={};
+    for(const tt of e.touches) t[tt.identifier]={x:tt.clientX,y:tt.clientY};
+    return t;
+  }
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    touches=touchPos(e); tLast=touchPos(e);
+  },{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const cur=touchPos(e);
+    const ids=Object.keys(cur);
+    if(ids.length===1){
+      // 1 finger → rotate
+      const id=ids[0];
+      if(tLast[id]){
+        rotate(cur[id].x-tLast[id].x, cur[id].y-tLast[id].y);
+      }
+    } else if(ids.length===2){
+      const [a,b]=ids;
+      if(tLast[a]&&tLast[b]){
+        // pinch → zoom
+        const prevDist=Math.hypot(tLast[a].x-tLast[b].x, tLast[a].y-tLast[b].y);
+        const curDist =Math.hypot(cur[a].x-cur[b].x,   cur[a].y-cur[b].y);
+        const pinchDelta=(prevDist-curDist)*2;
+        zoom(pinchDelta);
+        // 2-finger center pan
+        const pMidX=(tLast[a].x+tLast[b].x)/2, pMidY=(tLast[a].y+tLast[b].y)/2;
+        const cMidX=(cur[a].x+cur[b].x)/2,   cMidY=(cur[a].y+cur[b].y)/2;
+        pan(cMidX-pMidX, cMidY-pMidY);
+      }
+    }
+    tLast=cur;
+  },{passive:false});
+  el.addEventListener('touchend',e=>{
+    e.preventDefault();
+    touches=touchPos(e); tLast=touchPos(e);
+  },{passive:false});
+}
+
+function resizeThree(){
+  if(!renderer||!camera)return;
+  const c=document.getElementById('three-container');
+  const w=c.clientWidth,h=c.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+
+function fitCamera(object){
+  const box=new THREE.Box3().setFromObject(object);
+  const size=box.getSize(new THREE.Vector3());
+  const center=box.getCenter(new THREE.Vector3());
+  const maxDim=Math.max(size.x,size.y,size.z)||1;
+  const dist=(maxDim/(2*Math.tan(camera.fov*Math.PI/360)))*1.8;
+  camera.near=dist*0.001; camera.far=dist*200;
+  camera.updateProjectionMatrix();
+  _controls.setSph(dist,0.6,0.8);
+  _controls.setTgt(center);
+  _controls.update();
+  _controls._init={sph:_controls.getSph(),tgt:center.clone()};
+}
+
+/* ── OBJ parser (inline) ── */
+function parseOBJ(text){
+  const pos=[],nor=[],uvs=[];
+  const vArr=[],nArr=[],uArr=[];
+  for(const raw of text.split('\n')){
+    const line=raw.trim();
+    if(line.startsWith('v ')){
+      const[,x,y,z]=line.split(/\s+/);
+      pos.push(+x,+y,+z);
+    }else if(line.startsWith('vn ')){
+      const[,x,y,z]=line.split(/\s+/);
+      nor.push(+x,+y,+z);
+    }else if(line.startsWith('vt ')){
+      const[,u,v]=line.split(/\s+/);
+      uvs.push(+u,+v);
+    }else if(line.startsWith('f ')){
+      const parts=line.slice(2).trim().split(/\s+/);
+      for(let i=1;i<parts.length-1;i++){
+        [parts[0],parts[i],parts[i+1]].forEach(p=>{
+          const[vi,ti,ni]=p.split('/').map(s=>s?+s-1:undefined);
+          vArr.push(pos[vi*3],pos[vi*3+1],pos[vi*3+2]);
+          if(ni!=null&&nor.length) nArr.push(nor[ni*3],nor[ni*3+1],nor[ni*3+2]);
+          if(ti!=null&&uvs.length) uArr.push(uvs[ti*2],uvs[ti*2+1]);
+        });
+      }
+    }
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(vArr,3));
+  if(nArr.length===vArr.length) geo.setAttribute('normal',new THREE.Float32BufferAttribute(nArr,3));
+  else geo.computeVertexNormals();
+  if(uArr.length) geo.setAttribute('uv',new THREE.Float32BufferAttribute(uArr,2));
+  const mat=new THREE.MeshStandardMaterial({color:0x88aabb,side:THREE.DoubleSide});
+  return new THREE.Mesh(geo,mat);
+}
+
+/* ── FBX material: DoubleSide + alpha mask sebagai cutout ──
+   FBXLoader r128 mengubah slot Opacity 3ds Max menjadi alphaMap + transparent
+   (blending seperti kaca, membaca channel hijau). Di sini dijadikan cutout. */
+function fbxMaterials(obj){
+  const list=[];
+  obj.traverse(c=>{
+    if(c.isMesh)(Array.isArray(c.material)?c.material:[c.material]).forEach(m=>{if(m&&!list.includes(m))list.push(m);});
+  });
+  return list;
+}
+function prepareFbxMaterials(obj){
+  fbxMaterials(obj).forEach(m=>{
+    m.side=THREE.DoubleSide;
+    if(m.alphaMap){
+      // alphaMap ditunda sampai teksturnya selesai dimuat (tekstur kosong = alpha 0 = mesh hilang)
+      m.userData.fbxAlphaMap=m.alphaMap; m.alphaMap=null;
+      m.transparent=false; m.depthWrite=true; m.alphaTest=0.5;
+    }
+    m.needsUpdate=true;
+  });
+}
+function finishFbxMaterials(obj){
+  const src=tex=>tex&&tex.image&&tex.image.naturalWidth>0?tex.image.src:null;
+  fbxMaterials(obj).forEach(m=>{
+    const am=m.userData.fbxAlphaMap;
+    if(!am)return;
+    delete m.userData.fbxAlphaMap;
+    // file sama dengan diffuse → mask sudah ada di channel alpha map; file lain → mask grayscale
+    if(src(am)&&src(am)!==src(m.map)){m.alphaMap=am;m.needsUpdate=true;}
+  });
+}
+
+/* ── load3D ── */
+function load3D(url,ext){
+  setState('3d');
+  const ok=initThree();
+  if(!ok)return;
+  const loadEl=document.getElementById('three-loading');
+  const loadTxt=document.getElementById('loading-text');
+  loadEl.style.display='flex';
+  document.getElementById('three-hint').style.display='none';
+
+  const onLoaded=obj=>{
+    obj.traverse(c=>{
+      if(c.isMesh){
+        if(!c.material) c.material=new THREE.MeshStandardMaterial({color:0x888888});
+        c.castShadow=false;
+      }
+    });
+    scene.add(obj);
+    fitCamera(obj);
+    loadEl.style.display='none';
+    const hint=document.getElementById('three-hint');
+    hint.textContent=isMobile()?t('hint_mobile'):t('hint_desktop');
+    hint.style.display='block';
+  };
+
+  if(ext==='obj'){
+    loadTxt.textContent=t('load_model')+' OBJ...';
+    fetch(url)
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text();})
+      .then(txt=>{onLoaded(parseOBJ(txt));})
+      .catch(e=>{loadTxt.textContent='Gagal memuat OBJ: '+e.message;});
+  } else if(ext==='fbx'){
+    if(typeof THREE.FBXLoader==='undefined'){
+      loadEl.style.display='none';
+      const err=document.createElement('div');
+      err.className='webgl-error';
+      err.innerHTML='FBXLoader belum tersedia. Tunggu sebentar lalu coba lagi, atau pastikan ada koneksi internet.';
+      document.getElementById('three-container').appendChild(err);
+      return;
+    }
+    loadTxt.textContent=t('load_model')+' FBX...';
+    const manager=new THREE.LoadingManager();
+    // tekstur TIF model 3D: minta server mempertahankan alpha (preview & download tanpa ini)
+    manager.setURLModifier(u=>/\.tiff?$/i.test(u)?u+'?alpha=1':u);
+    let fbxObj=null,texturesDone=false;
+    manager.onLoad=()=>{texturesDone=true;if(fbxObj)finishFbxMaterials(fbxObj);};
+    new THREE.FBXLoader(manager).load(url,
+      obj=>{prepareFbxMaterials(obj);fbxObj=obj;onLoaded(obj);if(texturesDone)finishFbxMaterials(obj);},
+      xhr=>{if(xhr.lengthComputable)loadTxt.textContent=`${t('load_pct')}... ${Math.round(xhr.loaded/xhr.total*100)}%`;},
+      e=>{loadTxt.textContent='Gagal memuat FBX: '+(e.message||e);}
+    );
+  }
+}
+
+/* ── toolbar buttons ── */
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  if(_controls&&_controls._init){
+    const{sph,tgt}=_controls._init;
+    _controls.setSph(sph.radius,sph.theta,sph.phi);
+    _controls.setTgt(tgt);
+    _controls.update();
+  }
+});
+let wireMode=false;
+document.getElementById('btn-wire').addEventListener('click',()=>{
+  wireMode=!wireMode;
+  document.getElementById('btn-wire').classList.toggle('active',wireMode);
+  if(!scene)return;
+  scene.traverse(o=>{
+    if(o.isMesh)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m)m.wireframe=wireMode;});
+  });
+});
+
+/* ════════════════════════════════════════════════════════════
+   DOWNLOAD
+════════════════════════════════════════════════════════════ */
+dlBtn.addEventListener('click',()=>{
+  if(!currentPath)return;
+  const a=document.createElement('a');
+  a.href=`/api/download/${currentPath}`;
+  a.download=''; document.body.appendChild(a);
+  a.click(); a.remove();
+});
+
+/* ════════════════════════════════════════════════════════════
+   DESKTOP RESIZE HANDLE
+════════════════════════════════════════════════════════════ */
+const handle=document.getElementById('resize-handle');
+let resizing=false,startX,startW;
+handle.addEventListener('mousedown',e=>{
+  resizing=true; startX=e.clientX; startW=sidebar.offsetWidth;
+  handle.classList.add('dragging');
+  document.body.style.userSelect='none'; document.body.style.cursor='col-resize';
+});
+document.addEventListener('mousemove',e=>{
+  if(!resizing)return;
+  sidebar.style.width=Math.min(Math.max(startW+(e.clientX-startX),140),560)+'px';
+});
+document.addEventListener('mouseup',()=>{
+  if(!resizing)return;
+  resizing=false; handle.classList.remove('dragging');
+  document.body.style.userSelect=''; document.body.style.cursor='';
+  resizeThree();
+});
+window.addEventListener('resize',()=>{
+  resizeThree();
+  document.getElementById('three-hint').textContent=isMobile()?t('hint_mobile'):t('hint_desktop');
+});
+
+/* ════════════════════════════════════════════════════════════
+   PWA — register service worker
+════════════════════════════════════════════════════════════ */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+/* ════════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════════ */
+applyLang();
+loadTree();
+</script>
+
+<!-- FBX loader (opsional, butuh internet) -->
+<script>
+(function(){
+  const f=document.createElement('script');
+  f.src='https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js';
+  document.head.appendChild(f);
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js';
+  s.onerror=()=>console.warn('[PolyView] FBXLoader gagal — FBX preview tidak tersedia');
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>

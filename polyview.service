@@ -1,0 +1,23 @@
+[Unit]
+Description=PolyView 3D Browser
+After=network.target
+
+[Service]
+User=windy
+Group=www-data
+WorkingDirectory=/var/www/polyview
+
+# penting: set PATH ke venv
+Environment="PATH=/var/www/polyview/venv/bin"
+# folder data yang dijelajahi (default di kode: /data)
+Environment="POLYVIEW_DATA_DIR=/mnt/vermax/arya_data/database/3dsmax"
+
+ExecStart=/var/www/polyview/venv/bin/gunicorn \
+    -w 2 \
+    -b 127.0.0.1:5000 \
+    app.server:app
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
